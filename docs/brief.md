@@ -1,4 +1,4 @@
-# Business Brief: Reducing Missed Appointments
+## Business Brief: Reducing Missed Appointments
 
 ## Business problem
 When a patient misses an appointment without warning, the slot is lost. The
@@ -8,7 +8,7 @@ in Vitória, Brazil (April–June 2016) to find which appointments are most at r
 of being missed and what the clinic can do about it.
 
 ## Business question
-**Which appointment slots are most likely to end in a no-show, and how can the clinic
+**Which appointments are most likely to end in a no-show, and how can the clinic
 reduce them?**
 
 Sub-questions:
