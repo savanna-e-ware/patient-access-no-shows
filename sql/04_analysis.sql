@@ -84,3 +84,41 @@ ORDER BY MIN(lead_time_days), sms_received
 --          and none get an SMS. Comparing within each bucket is fairer: SMS is linked with
 --          fewer no-shows mainly for appointments booked far ahead.
 --          This is a correlation, not proof that SMS causes it.
+
+  --A6 Does a patient's number of earlier no-shows predict the next one?
+  WITH history AS (
+      SELECT
+          patient_id,
+          appointment_date,
+          is_no_show,
+          COALESCE(
+              SUM(is_no_show) OVER (
+                  PARTITION BY patient_id
+                  ORDER BY appointment_date, appointment_id
+                  ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+              ), 0) AS prior_no_shows
+      FROM stg_appointments
+  )
+  SELECT
+      CASE WHEN prior_no_shows = 0 THEN '0'
+           WHEN prior_no_shows = 1 THEN '1'
+           ELSE '2+' END AS prior_no_show_group,
+      COUNT(*) AS appointments,
+      ROUND(AVG(is_no_show) * 100, 1) AS no_show_rate_pct
+  FROM history
+  GROUP BY prior_no_show_group
+  ORDER BY prior_no_show_group
+  ;
+
+  -- Result: no history (0 earlier no-shows): 18.7% no-show rate (94,551 appointments)
+--         1 earlier no-show: 27.1% (11,898 appointments)
+--         2+ earlier no-shows: 35.1% (4,072 appointments)
+--         Check: the three appointment counts add up to 110,521.
+-- Meaning: the no-show rate rises as earlier no-shows go up.
+--          A patient with 2+ earlier no-shows is about 1.9x as likely to miss as one with none
+--          (35.1% / 18.7%).
+--          Clinics could prioritize contacting previous no shows for reminders first.
+--          Caveat: the data covers only 6 weeks, so most patients have little history,
+--          and this is a correlation, not proof of cause.
+
+
