@@ -85,7 +85,7 @@ ORDER BY MIN(lead_time_days), sms_received
 --          fewer no-shows mainly for appointments booked far ahead.
 --          This is a correlation, not proof that SMS causes it.
 
-  --A6 Does a patient's number of earlier no-shows predict the next one?
+--A6 Does a patient's number of earlier no-shows predict the next one?
   WITH history AS (
       SELECT
           patient_id,
@@ -110,7 +110,7 @@ ORDER BY MIN(lead_time_days), sms_received
   ORDER BY prior_no_show_group
   ;
 
-  -- Result: no history (0 earlier no-shows): 18.7% no-show rate (94,551 appointments)
+-- Result: no history (0 earlier no-shows): 18.7% no-show rate (94,551 appointments)
 --         1 earlier no-show: 27.1% (11,898 appointments)
 --         2+ earlier no-shows: 35.1% (4,072 appointments)
 --         Check: the three appointment counts add up to 110,521.
@@ -122,3 +122,30 @@ ORDER BY MIN(lead_time_days), sms_received
 --          and this is a correlation, not proof of cause.
 
 
+--A7 What share of patients have 2 or more no-shows?
+WITH patient_totals AS (
+    SELECT
+        patient_id,                             
+        COUNT(*) AS appointments,
+        SUM(is_no_show) AS no_shows
+    FROM stg_appointments
+    GROUP BY patient_id
+)
+SELECT
+    COUNT(*) AS patients,
+    SUM(no_shows) AS total_no_shows,
+    SUM(CASE WHEN no_shows >= 2 THEN no_shows ELSE 0 END) AS repeat_patient_no_shows,
+    ROUND(SUM(CASE WHEN no_shows >= 2 THEN no_shows ELSE 0 END) * 100.0 / SUM(no_shows), 1) AS repeat_share_of_no_shows_pct,
+    SUM(CASE WHEN no_shows >= 2 THEN 1 ELSE 0 END) AS repeat_no_show_patients,
+    ROUND(AVG(CASE WHEN no_shows >= 2 THEN 1 ELSE 0 END) * 100, 1) AS repeat_no_show_pct
+FROM patient_totals
+;
+
+-- Result: 62,298 patients in total; 3,223 (5.2%) had 2 or more no-shows.
+--         Those patients account for 7,876 of 22,314 no-shows (35.3%).
+-- Meaning: a small group of repeat no-show patients causes
+--          a large share of all missed appointments.
+--          Combined with A6, clinics could flag patients with 2+ no-shows
+--          for a reminder call or a confirmation request before their next appointment.
+--          Caveat: with only 6 weeks of data, a patient needs at least 2
+--          appointments in that window to count as a repeat no-show.
