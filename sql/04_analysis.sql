@@ -117,7 +117,7 @@ ORDER BY MIN(lead_time_days), sms_received
 -- Meaning: the no-show rate rises as earlier no-shows go up.
 --          A patient with 2+ earlier no-shows is about 1.9x as likely to miss as one with none
 --          (35.1% / 18.7%).
---          Clinics could prioritize contacting previous no shows for reminders first.
+--          Clinics could prioritize contacting patients with earlier no-shows for reminders first.
 --          Caveat: the data covers only 6 weeks, so most patients have little history,
 --          and this is a correlation, not proof of cause.
 
@@ -149,3 +149,38 @@ FROM patient_totals
 --          for a reminder call or a confirmation request before their next appointment.
 --          Caveat: with only 6 weeks of data, a patient needs at least 2
 --          appointments in that window to count as a repeat no-show.
+
+
+--A8 Which 5 neighbourhoods with 500+ appointments have the highest no-show rate?
+WITH neighbourhood_rates AS (
+    SELECT
+        neighbourhood,
+        COUNT(*) AS appointments,
+        ROUND(AVG(is_no_show) * 100, 1) AS no_show_rate_pct
+    FROM stg_appointments
+    GROUP BY neighbourhood
+    HAVING COUNT(*) >= 500
+),
+ranked AS (
+    SELECT
+        *,
+        RANK() OVER (ORDER BY no_show_rate_pct DESC) AS rate_rank
+    FROM neighbourhood_rates
+)
+SELECT *
+FROM ranked
+WHERE rate_rank <= 5
+ORDER BY rate_rank
+;
+
+-- Result: 54 of 81 neighbourhoods have 500+ appointments. Top 5 by no-show rate:
+--         Santos Dumont 28.9%, Santa Clara 26.5%, Itararé 26.3%,
+--         Jesus de Nazareth 24.4%, Ilha do Príncipe 23.5% (overall: 20.2%).
+-- Meaning: the highest-rate clinic location has a no-show rate about 1.4x the average
+--          (28.9% ÷ 20.2%).
+--          Itararé matters most in practice: 3,514 appointments × 26.3% ≈ 924 no-shows,
+--          the most of the five.
+--          Clinics could start reminder calls at Itararé, since its high rate and high volume
+--          give it the most no-shows of the five.
+--          Caveat: neighbourhood is the clinic's location, not the patient's home; Santa Clara
+--          only just passes 500; and this doesn't control for lead time or age mix.
