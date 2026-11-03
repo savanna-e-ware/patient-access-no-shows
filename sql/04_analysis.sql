@@ -184,3 +184,4 @@ ORDER BY rate_rank
 --          give it the most no-shows of the five.
 --          Caveat: neighbourhood is the clinic's location, not the patient's home; Santa Clara
 --          only just passes 500; and this doesn't control for lead time or age mix.
+

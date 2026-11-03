@@ -38,3 +38,8 @@ SELECT
 FROM raw_appointments
 WHERE Age >= 0 AND CAST(AppointmentDay AS DATE) >= CAST(ScheduledDay AS DATE)
 ;
+
+
+-- Export the clean table for Tableau
+COPY stg_appointments TO 'data/processed/appointments_clean.csv' (HEADER)
+;
